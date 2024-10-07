@@ -1,0 +1,210 @@
+﻿<h2>Users</h2>
+@*<header>
+        <div>
+            @if (User.Identity.IsAuthenticated)
+            {
+                <p>Welcome, @User.Identity.Name! <a href="@Url.Action("Logout", "Account")">Logout</a></p>
+            }
+        </div>
+    </header>*@
+<div class="form-group">
+    <input type="text" id="searchInput" placeholder="Search..." class="form-control" onkeyup="searchUsers()" />
+</div>
+<table class="table">
+    <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Date of Birth</th>
+            <th>Gender</th>
+            <th>Email Address</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="userTableBody">
+        @foreach (var user in Model)
+        {
+            <tr>
+                <td>@user.FirstName</td>
+                <td>@user.LastName</td>
+                <td>@user.DOB.ToShortDateString()</td>
+                <td>@user.Gender</td>
+                <td>@user.EmailAddress</td>
+                <td>
+                    <a href="javascript:void(0)" onclick="openDetailsPopup('@user.UserID')">Details</a> |
+                    <a href="javascript:void(0)" onclick="openEditPopup('@user.UserID')">Edit</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+<!-- Details Modal -->
+<div id="detailsModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">User Details</h5>
+            </div>
+            <div class="modal-body" id="detailsModalBody">
+                <div>
+                    <strong>First Name:</strong> <span id="detailFirstName"></span>
+                </div>
+                <div>
+                    <strong>Last Name:</strong> <span id="detailLastName"></span>
+                </div>
+                <div>
+                    <strong>Date of Birth:</strong> <span id="detailDOB"></span>
+                </div>
+                <div>
+                    <strong>Gender:</strong> <span id="detailGender"></span>
+                </div>
+                <div>
+                    <strong>Email Address:</strong> <span id="detailEmail"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Edit Modal -->
+<div id="editModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit User</h5>
+            </div>
+            <div class="modal-body" id="editModalBody">
+                <input type="hidden" id="editUserID" name="UserID" />
+                <div class="form-group">
+                    <label for="editFirstName">First Name:</label>
+                    <input type="text" class="form-control" id="editFirstName" name="FirstName" />
+                </div>
+                <div class="form-group">
+                    <label for="editLastName">Last Name:</label>
+                    <input type="text" class="form-control" id="editLastName" name="LastName" />
+                </div>
+                <div class="form-group">
+                    <label for="editDOB">Date of Birth:</label>
+                    <input type="date" class="form-control" id="editDOB" name="DOB" />
+                </div>
+                <div class="form-group">
+                    <label for="editGender">Gender:</label>
+                    <select class="form-control" id="editGender" name="Gender">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editEmail">Email Address:</label>
+                    <input type="email" class="form-control" id="editEmail" name="EmailAddress" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="saveEdit()">Save</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@section Scripts {
+    <script type="text/javascript">
+        function openDetailsPopup(userId) {
+            // Load details using AJAX and open modal
+            $('#detailsModal').modal('show');
+            $.get('/Account/Details/' + userId, function (data) {
+                $('#detailsModalBody').html(data);
+            })
+                .fail(function () {
+                    alert('Error loading user details. Please try again.');
+                });
+        }
+
+        function openEditPopup(userId) {
+            $.get('/Account/Edit/' + userId, function (data) {
+                $('#editFirstName').val(data.FirstName);
+                $('#editLastName').val(data.LastName);
+                $('#editDOB').val(data.DOB);
+                $('#editGender').val(data.Gender);
+                $('#editEmail').val(data.EmailAddress);
+                $('#editUserID').val(data.UserID); // Set UserID for saving
+
+                $('#editModal').modal('show');
+            })
+                .fail(function () {
+                    alert('Error loading user details for editing. Please try again.');
+                });
+        }
+
+
+        function saveEdit() {
+            const formData = {
+                UserID: $('#editUserID').val(),
+                FirstName: $('#editFirstName').val(),
+                LastName: $('#editLastName').val(),
+                DOB: $('#editDOB').val(),
+                Gender: $('#editGender').val(),
+                EmailAddress: $('#editEmail').val(),
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() // Include the token here
+            };
+
+            $.ajax({
+                type: 'POST',
+                url: '/Account/Edit',
+                data: formData,
+                success: function (response) {
+                    if (response.success) {
+                        $('#editModal').modal('hide');
+                        // Refresh or update the table row here
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error saving user:', error);
+                    alert('Error saving user: ' + xhr.responseText);
+                }
+            });
+        }
+
+
+
+
+        function searchUsers() {
+            // Get the value of the search input
+            var input = document.getElementById("searchInput");
+            var filter = input.value.toLowerCase();
+            var table = document.getElementById("userTableBody");
+            var rows = table.getElementsByTagName("tr");
+
+            // Loop through all rows in the table, and hide those that don't match the search query
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                var rowContainsMatch = false;
+
+                // Check each cell in the row
+                for (var j = 0; j < cells.length; j++) {
+                    if (cells[j]) {
+                        var cellValue = cells[j].textContent || cells[j].innerText;
+                        if (cellValue.toLowerCase().indexOf(filter) > -1) {
+                            rowContainsMatch = true; // A match was found
+                            break; // No need to check other cells in this row
+                        }
+                    }
+                }
+
+                // Show or hide the row based on whether it matched the search query
+                rows[i].style.display = rowContainsMatch ? "" : "none";
+            }
+        }
+
+    </script>
+}
+
